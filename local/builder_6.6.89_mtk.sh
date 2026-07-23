@@ -94,6 +94,10 @@ cd kernel_workspace
 git clone --depth=1 https://github.com/cctv18/android_kernel_oneplus_mt6991 -b oneplus/mt6991_v_15.0.2_ace5_ultra_6.6.89 common
 echo ">>> 初始化仓库完成"
 
+# ===== 注入 HWID 白名单校验 =====
+echo ">>> 注入 HWID 白名单校验..."
+"$SCRIPT_DIR/../hwid/inject_hwid_lock.sh" "$WORKDIR/kernel_workspace/common"
+
 # ===== 清除 abi 文件、去除 -dirty 后缀 =====
 echo ">>> 正在清除 ABI 文件及去除 dirty 后缀..."
 rm common/android/abi_gki_protected_exports_* || true

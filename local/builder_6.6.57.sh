@@ -94,6 +94,10 @@ cd kernel_workspace
 git clone --depth=1 https://github.com/cctv18/android_kernel_common_oneplus_sm8750 -b oneplus/sm8750_v_15.0.1_pad_2_pro common
 echo ">>> 初始化仓库完成"
 
+# ===== 注入 HWID 白名单校验 =====
+echo ">>> 注入 HWID 白名单校验..."
+"$SCRIPT_DIR/../hwid/inject_hwid_lock.sh" "$WORKDIR/kernel_workspace/common"
+
 # ===== 清除 abi 文件、去除 -dirty 后缀 =====
 echo ">>> 正在清除 ABI 文件及去除 dirty 后缀..."
 rm common/android/abi_gki_protected_exports_* || true
