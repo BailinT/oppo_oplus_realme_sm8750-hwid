@@ -50,26 +50,21 @@ static const char *__init hwid_from_cmdline(const char *key, char *value,
 	return NULL;
 }
 
-static const char *__init hwid_read(char *value, size_t value_size)
+/* Read one key; the caller checks every available key against the allowlist. */
+static const char *__init hwid_read_key(const char *key, char *value,
+					 size_t value_size)
 {
-	unsigned int i;
-
-	for (i = 0; i < ARRAY_SIZE(hwid_keys); i++) {
 #ifdef CONFIG_BOOT_CONFIG
-		struct xbc_node *value_node;
-		const char *bootconfig_value = xbc_find_value(hwid_keys[i],
-							       &value_node);
+	struct xbc_node *value_node;
+	const char *bootconfig_value = xbc_find_value(key, &value_node);
 
-		if (bootconfig_value && *bootconfig_value) {
-			strscpy(value, bootconfig_value, value_size);
-			return value;
-		}
-#endif
-		if (hwid_from_cmdline(hwid_keys[i], value, value_size))
-			return value;
+	if (bootconfig_value && *bootconfig_value) {
+		if (strscpy(value, bootconfig_value, value_size) < 0)
+			return NULL;
+		return value;
 	}
-
-	return NULL;
+#endif
+	return hwid_from_cmdline(key, value, value_size);
 }
 
 static bool __init hwid_allowed(const char *hwid)
@@ -86,18 +81,25 @@ static bool __init hwid_allowed(const char *hwid)
 
 void __init hwid_lock_verify(void)
 {
-	char hwid[HWID_LOCK_MAX_ID_LEN];
-	const char *detected = hwid_read(hwid, sizeof(hwid));
+	char value[HWID_LOCK_MAX_ID_LEN];
+	bool found_any = false;
+	unsigned int i;
 
-	if (!detected)
-		panic_timeout = 1;
-	if (!detected)
-		panic("HWID lock: androidboot.chipid/oplusboot.serialno is missing");
+	for (i = 0; i < ARRAY_SIZE(hwid_keys); i++) {
+		const char *detected = hwid_read_key(hwid_keys[i], value,
+						     sizeof(value));
 
-	if (!hwid_allowed(detected)) {
-		panic_timeout = 1;
-		panic("HWID lock: this kernel is not authorized for this device");
+		if (!detected)
+			continue;
+		found_any = true;
+		if (hwid_allowed(detected)) {
+			pr_info("HWID lock: device authorized via %s\n", hwid_keys[i]);
+			return;
+		}
 	}
 
-	pr_info("HWID lock: device authorized\n");
+	panic_timeout = 1;
+	if (!found_any)
+		panic("HWID lock: androidboot.chipid/oplusboot.serialno is missing");
+	panic("HWID lock: this kernel is not authorized for this device");
 }
